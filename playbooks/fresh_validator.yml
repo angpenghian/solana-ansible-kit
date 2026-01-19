@@ -8,7 +8,6 @@
     - vars/agave_vars.yml
     - vars/jito_vars.yml
     - vars/firedancer_vars.yml
-    - vars/monitor.yml
 
   # override vars
   vars:
@@ -59,9 +58,3 @@
     - role: firedancer/validator_compile
       tags: [firedancer-compile]
 
-    - role: monitor/site24x7_install
-      tags: [monitoring]
-    - role: monitor/site24x7_linux_security_updates_plugin
-      tags: [monitoring]
-    - role: monitor/validator_health_check
-      tags: [health-check]

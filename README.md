@@ -1,6 +1,6 @@
 # Solana Ansible Kit
 
-Ansible automation to provision and operate Solana validator fleets (Agave, Jito, Firedancer). The goal is a simple, resume-ready repo that demonstrates real-world infra patterns without internal company details.
+Ansible automation to provision and operate Solana validator fleets (Agave, Jito, Firedancer). The goal is a simple, resume-ready repo that demonstrates real-world infra patterns.
 
 ## Vision
 Make validator fleet ops repeatable: compile, configure, harden, and upgrade in a clean, auditable way.
@@ -19,9 +19,6 @@ Common hardening + tuning
       |
       v
 Validator compile + service setup
-      |
-      v
-Optional monitoring + health checks
 ```
 
 ## Repository Structure
@@ -38,14 +35,12 @@ solana-ansible-kit/
 │       ├── agave_vars.yml
 │       ├── common_vars.yml
 │       ├── firedancer_vars.yml
-│       ├── jito_vars.yml
-│       └── monitor.yml
+│       └── jito_vars.yml
 ├── roles/
 │   ├── agave/
 │   ├── common/
 │   ├── firedancer/
-│   ├── jito/
-│   └── monitor/
+│   └── jito/
 └── README.md
 ```
 
@@ -71,10 +66,6 @@ ansible-playbook playbooks/fresh_validator.yml --tags agave-compile
 ansible-playbook playbooks/fresh_validator.yml --tags jito-upgrade
 ansible-playbook playbooks/fresh_validator.yml --tags firedancer-compile
 ```
-
-## Optional Integrations
-- `monitor/site24x7_install`: vendor agent example (requires `site24x7_device_key`)
-- `monitor/validator_health_check`: custom health check repo placeholder in `playbooks/vars/monitor.yml`
 
 ## Notes
 - `docs/` is local-only and gitignored by default for portfolio planning.
