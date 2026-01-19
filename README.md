@@ -73,4 +73,4 @@ ansible-playbook playbooks/sol_validator.yml --tags firedancer-compile
 - Keep changes minimal and auditable; prefer the simplest path that works.
 
 ## License
-Internal portfolio use. Replace or add a license if you publish this publicly.
+Apache-2.0. See `LICENSE`.
