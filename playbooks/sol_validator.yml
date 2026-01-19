@@ -47,11 +47,15 @@
       tags: [jito-compile]
     - role: jito/validator_compile
       tags: [jito-compile]
+    - role: jito/preflight_checks
+      tags: [jito-compile, jito-preflight]
     # version upgrade
     - role: jito/prereqs_upgrade
       tags: [jito-upgrade]
     - role: jito/validator_upgrade
       tags: [jito-upgrade]
+    - role: jito/preflight_checks
+      tags: [jito-upgrade, jito-preflight]
 
     - role: firedancer/prereqs_install
       tags: [firedancer-compile]
