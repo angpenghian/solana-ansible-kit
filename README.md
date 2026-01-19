@@ -30,7 +30,7 @@ solana-ansible-kit/
 ├── inventory/
 │   └── hosts.yml
 ├── playbooks/
-│   ├── fresh_validator.yml
+│   ├── sol_validator.yml
 │   └── vars/
 │       ├── agave_vars.yml
 │       ├── common_vars.yml
@@ -53,18 +53,18 @@ ansible-galaxy collection install -r collections/requirements.yml
 2) Update inventory and vars
 - Edit `inventory/hosts.yml`
 - Add SSH keys and user list in `playbooks/vars/common_vars.yml`
-- Adjust validator versions and networks in `playbooks/fresh_validator.yml`
+- Adjust validator versions and networks in `playbooks/sol_validator.yml`
 
 3) Run preflight or a full provisioning (from repo root)
 ```bash
-ansible-playbook playbooks/fresh_validator.yml --limit primary_validators
+ansible-playbook playbooks/sol_validator.yml --limit primary_validators
 ```
 
 4) Use tags to target compiles/upgrades
 ```bash
-ansible-playbook playbooks/fresh_validator.yml --tags agave-compile
-ansible-playbook playbooks/fresh_validator.yml --tags jito-upgrade
-ansible-playbook playbooks/fresh_validator.yml --tags firedancer-compile
+ansible-playbook playbooks/sol_validator.yml --tags agave-compile
+ansible-playbook playbooks/sol_validator.yml --tags jito-upgrade
+ansible-playbook playbooks/sol_validator.yml --tags firedancer-compile
 ```
 
 ## Notes
