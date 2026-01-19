@@ -6,7 +6,7 @@ This role automates the installation, configuration, and management of the Fired
 
 The Firedancer role consists of two main components:
 - **`prereqs_install`**: Installs Firedancer-specific dependencies and build requirements
-- **`validator_install`**: Compiles, configures, and sets up Firedancer validator with optimized settings
+- **`validator_compile`**: Compiles, configures, and sets up Firedancer validator with optimized settings
 
 ## Current Configuration
 
@@ -199,7 +199,7 @@ sudo systemctl status frankendancer
 ## Ansible Integration
 
 ### Tags
-- `firedancer-install`: Install and configure Firedancer
+- `firedancer-compile`: Compile and configure Firedancer
 
 ### Variables
 - `firedancer_install_version`: v0.708.20306
@@ -209,9 +209,9 @@ sudo systemctl status frankendancer
 ### Usage in Playbook
 ```yaml
 - role: firedancer/prereqs_install
-  tags: [firedancer-install]
-- role: firedancer/validator_install
-  tags: [firedancer-install]
+  tags: [firedancer-compile]
+- role: firedancer/validator_compile
+  tags: [firedancer-compile]
 ```
 
 ## Performance Optimization

@@ -72,7 +72,7 @@
 
 - name: Fail if Jito repository doesn't exist
   ansible.builtin.fail:
-    msg: "Jito repository not found at /home/sol/jito-solana. Run jito/validator_install role first."
+    msg: "Jito repository not found at /home/sol/jito-solana. Run jito/validator_compile role first."
   when: not jito_repo_check.stat.exists
 
 - name: Check Jito repository git status
@@ -138,7 +138,7 @@
 
 - name: Fail if validator script doesn't exist
   ansible.builtin.fail:
-    msg: "Validator script not found at /home/sol/validator.sh. Run jito/validator_install role first."
+    msg: "Validator script not found at /home/sol/validator.sh. Run jito/validator_compile role first."
   when: not validator_script_check.stat.exists
 
 - name: Check validator script permissions
@@ -158,7 +158,7 @@
 
 - name: Fail if .bashrc doesn't have Jito PATH configuration
   ansible.builtin.fail:
-    msg: "Jito PATH configuration not found in /home/sol/.bashrc. Run jito/validator_install role first."
+    msg: "Jito PATH configuration not found in /home/sol/.bashrc. Run jito/validator_compile role first."
   when: bashrc_jito_check.rc != 0
 
 # =============================================================================

@@ -1,12 +1,28 @@
 # Solana Ansible Kit
 
-Ansible automation to provision and operate Solana validator fleets (Agave, Jito, Firedancer) with opinionated host hardening, performance tuning, and repeatable upgrades. This repo is intentionally simple and resume-ready: it shows real-world infra patterns without internal company details.
+Ansible automation to provision and operate Solana validator fleets (Agave, Jito, Firedancer). The goal is a simple, resume-ready repo that demonstrates real-world infra patterns without internal company details.
 
-## Highlights
-- Multi-validator support with tagged installs/upgrades
-- Host hardening, baseline packages, and performance tuning
-- Optional monitoring agent + health check integration
-- Idempotent roles designed for repeatable runs
+## Vision
+Make validator fleet ops repeatable: compile, configure, harden, and upgrade in a clean, auditable way.
+
+## Why this is trustworthy
+- Idempotent roles and tagged runs for predictable changes
+- Explicit variables and placeholders instead of hidden secrets
+- Clear inventory structure and minimal assumptions
+
+## How it works (high-level)
+```
+Inventory + vars
+      |
+      v
+Common hardening + tuning
+      |
+      v
+Validator compile + service setup
+      |
+      v
+Optional monitoring + health checks
+```
 
 ## Repository Structure
 ```
@@ -44,16 +60,16 @@ ansible-galaxy collection install -r collections/requirements.yml
 - Add SSH keys and user list in `playbooks/vars/common_vars.yml`
 - Adjust validator versions and networks in `playbooks/fresh_validator.yml`
 
-3) Run preflight or a full provisioning
+3) Run preflight or a full provisioning (from repo root)
 ```bash
 ansible-playbook playbooks/fresh_validator.yml --limit primary_validators
 ```
 
-4) Use tags to target installs/upgrades
+4) Use tags to target compiles/upgrades
 ```bash
-ansible-playbook playbooks/fresh_validator.yml --tags agave-install
+ansible-playbook playbooks/fresh_validator.yml --tags agave-compile
 ansible-playbook playbooks/fresh_validator.yml --tags jito-upgrade
-ansible-playbook playbooks/fresh_validator.yml --tags firedancer-install
+ansible-playbook playbooks/fresh_validator.yml --tags firedancer-compile
 ```
 
 ## Optional Integrations
@@ -63,6 +79,7 @@ ansible-playbook playbooks/fresh_validator.yml --tags firedancer-install
 ## Notes
 - `docs/` is local-only and gitignored by default for portfolio planning.
 - This repo uses placeholder inventory entries; replace with your own targets.
+- Keep changes minimal and auditable; prefer the simplest path that works.
 
 ## License
 Internal portfolio use. Replace or add a license if you publish this publicly.
