@@ -1,0 +1,1 @@
+export PATH="/home/sol/.local/share/solana/install/releases/{{ jito_upgrade_version }}"/bin:"$PATH"

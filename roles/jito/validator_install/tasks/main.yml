@@ -1,0 +1,62 @@
+---
+- name: Starting Role {{ role_name }}
+  ansible.builtin.debug:
+    msg: "DEBUG: {{ role_name }}"
+
+# Compile Jito
+- name: Clone jito-solana as sol
+  ansible.builtin.shell: |
+    su - sol -c "git clone --recurse-submodules https://github.com/jito-foundation/jito-solana.git /home/sol/jito-solana"
+  args:
+    creates: /home/sol/jito-solana
+
+- name: Git checkout tags/$TAG
+  ansible.builtin.shell: su - sol -c "cd /home/sol/jito-solana && git fetch --tags && git checkout tags/{{ jito_install_version }}"
+  environment:
+    TAG: "{{ jito_install_version }}"
+  changed_when: false
+  failed_when: false
+
+- name: Git submodule update --init --recursive
+  ansible.builtin.shell: su - sol -c "cd /home/sol/jito-solana && git submodule update --init --recursive"
+  changed_when: false
+  failed_when: false
+
+- name: Run cargo-install-all.sh with CI_COMMIT and TAG
+  ansible.builtin.shell: >
+    su - sol -c "cd /home/sol/jito-solana &&
+    CI_COMMIT=$(git rev-parse HEAD) scripts/cargo-install-all.sh --validator-only
+    ~/.local/share/solana/install/releases/$TAG"
+  environment:
+    TAG: "{{ jito_install_version }}"
+  changed_when: false
+  failed_when: false
+
+# Add Jito-specific content
+- name: Add Jito-specific content to .bashrc
+  ansible.builtin.blockinfile:
+    path: /home/sol/.bashrc
+    insertbefore: EOF
+    block: "{{ lookup('template', 'bashrc_addition') }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - AGAVE/JITO"
+    owner: sol
+    group: sol
+    mode: '0644'
+
+- name: Copy validator.sh based on network
+  ansible.builtin.template:
+    src: "validator_{{ jito_network }}.sh"
+    dest: /home/sol/validator.sh
+    owner: sol
+    group: sol
+    mode: '0755'
+
+# Set the version that was just installed for preflight checks
+- name: Set expected Jito version for preflight checks
+  ansible.builtin.set_fact:
+    expected_jito_version: "{{ jito_install_version }}"
+
+# Run Jito preflight checks
+- name: Run Jito preflight checks
+  ansible.builtin.include_role:
+    name: jito/preflight_checks

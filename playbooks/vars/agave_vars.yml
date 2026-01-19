@@ -1,0 +1,14 @@
+---
+# prereqs_install
+agave_dependencies:
+  - libssl-dev
+  - libudev-dev
+  - pkg-config
+  - zlib1g-dev
+  - llvm
+  - clang
+  - cmake
+  - make
+  - libprotobuf-dev
+  - protobuf-compiler
+  - libclang-dev

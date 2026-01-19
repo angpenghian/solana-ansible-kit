@@ -1,0 +1,13 @@
+---
+# prereqs_install / prereqs_upgrade
+jito_dependencies:
+  - libssl-dev
+  - libudev-dev
+  - pkg-config
+  - zlib1g-dev
+  - llvm
+  - clang
+  - cmake
+  - make
+  - libprotobuf-dev
+  - protobuf-compiler

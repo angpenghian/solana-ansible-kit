@@ -1,0 +1,121 @@
+---
+- name: Starting Role {{ role_name }}
+  ansible.builtin.debug:
+    msg: "DEBUG: {{ role_name }}"
+
+# Login settings
+- name: Disable password authentication access over SSH
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    state: present
+    regexp: '^#?PasswordAuthentication'
+    line: 'PasswordAuthentication no'
+
+- name: Disable root access over SSH
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    state: present
+    regexp: '^#?PermitRootLogin'
+    line: 'PermitRootLogin no'
+
+- name: Setup passwordless sudo
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers
+    state: present
+    regexp: '^%sudo'
+    line: '%sudo ALL=(ALL) NOPASSWD: ALL'
+    validate: '/usr/sbin/visudo -cf %s'
+
+- name: Restart SSH service
+  ansible.builtin.systemd:
+    name: ssh
+    state: restarted
+
+# Package management
+- name: Update APT cache
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Install base_packages
+  ansible.builtin.apt:
+    pkg: "{{ base_packages }}"
+    state: present
+
+- name: Install linux kernel tools
+  ansible.builtin.apt:
+    pkg: "{{ linux_kernel_tools }}"
+    state: present
+
+- name: Perform safe upgrade (apt upgrade)
+  ansible.builtin.apt:
+    upgrade: true
+
+# System Tweak
+- name: Tweak need restart system behavior
+  ansible.builtin.replace:
+    path: /etc/needrestart/needrestart.conf
+    regexp: '^#\$nrconf\{kernelhints\} = -1;'
+    replace: '$nrconf{kernelhints} = -1;'
+    backup: true
+  when: ansible_distribution == 'Ubuntu' and ansible_distribution_version != '20.04'
+
+- name: Disable ubuntu background services
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: false
+    state: stopped
+    masked: true
+  loop: "{{ disabled_services }}"
+  when: ansible_distribution == 'Ubuntu' and ansible_distribution_version != '20.04'
+
+- name: Ensure cpu governor is set
+  ansible.builtin.copy:
+    content: "GOVERNOR=\"performance\""
+    dest: /etc/default/cpufrequtils
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Increase open file limit - /etc/systemd/system.conf
+  ansible.builtin.blockinfile:
+    state: present
+    insertafter: EOF
+    dest: /etc/systemd/system.conf
+    content: |
+      DefaultLimitNOFILE=1000000
+
+- name: Increase open file limit - /etc/security/limits.d/90-solana-nofiles.conf
+  ansible.builtin.copy:
+    dest: /etc/security/limits.d/90-solana-nofiles.conf
+    content: |
+        # Increase process file descriptor count limit
+        * - nofile 1000000
+        # Increase memory locked limit (kB)
+        * - memlock 2000000
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+# sol directory structure
+- name: Create required directories for solana validator
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    recurse: true
+    mode: '0700'
+    owner: sol
+    group: sol
+  loop:
+    - /home/sol
+    - /home/sol/.ssh
+    - /home/sol/bin
+    - /var/log/solana
+    - /mnt/ledger
+    - /mnt/accounts
+    - /mnt/snapshots
+    - /home/sol/keys/junk

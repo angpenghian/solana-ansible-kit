@@ -1,0 +1,24 @@
+---
+- name: Starting Role {{ role_name }}
+  ansible.builtin.debug:
+    msg: "DEBUG: {{ role_name }}"
+
+- name: Install validator backup cronjob
+  block:
+    - name: Ensure backup directory exists
+      ansible.builtin.file:
+        path: /home/sol/backups
+        state: directory
+        owner: sol
+        group: sol
+        mode: '0755'
+
+    - name: Add cronjob for validator backup (daily at 1:00)
+      ansible.builtin.cron:
+        name: "Backup validator.sh daily"
+        user: sol
+        minute: "0"
+        hour: "9"
+        job: >
+          cp /home/sol/validator.sh "/home/sol/backups/validator.sh_$(date +\%Y-\%V)"
+          && chown -R sol:sol /home/sol/backups 2>&1

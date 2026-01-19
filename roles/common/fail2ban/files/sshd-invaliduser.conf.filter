@@ -1,0 +1,11 @@
+[INCLUDES]
+before = common.conf
+
+[Definition]
+_daemon = sshd
+
+failregex = ^%(__prefix_line)s[iI](?:llegal|nvalid) user .*? from <HOST>(?: port \d+)?\s*$
+ignoreregex = 
+
+[Init]
+journalmatch = _SYSTEMD_UNIT=sshd.service + _COMM=sshd

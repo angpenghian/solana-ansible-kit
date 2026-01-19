@@ -1,0 +1,70 @@
+---
+- name: Starting Role {{ role_name }}
+  ansible.builtin.debug:
+    msg: "DEBUG: {{ role_name }}"
+
+- name: Clone firedancer as sol
+  ansible.builtin.shell: |
+    su - sol -c "git clone --recurse-submodules https://github.com/firedancer-io/firedancer.git"
+  args:
+    creates: /home/sol/firedancer
+
+- name: Git checkout tags/$TAG
+  ansible.builtin.shell: su - sol -c "cd /home/sol/firedancer && git fetch --tags && git checkout tags/{{ firedancer_install_version }}"
+  environment:
+    TAG: "{{ firedancer_install_version }}"
+  changed_when: false
+  failed_when: false
+
+- name: Git submodule update --init --recursive
+  ansible.builtin.shell: su - sol -c "cd /home/sol/firedancer && git submodule update --init --recursive"
+  changed_when: false
+  failed_when: false
+
+- name: Run deps.sh with automatic yes response
+  ansible.builtin.expect:
+    command: su - sol -c "cd /home/sol/firedancer && ./deps.sh"
+    responses:
+      'Continue\\? \\(y/N\\)': 'y'
+  changed_when: false
+  failed_when: false
+
+- name: Compile fdctl and solana
+  ansible.builtin.shell: >
+    su - sol -c "cd /home/sol/firedancer && make -j fdctl solana"
+  changed_when: false
+  failed_when: false
+
+# Add firedancer-specific content
+- name: Add firedancer-specific content to .bashrc
+  ansible.builtin.blockinfile:
+    path: /home/sol/.bashrc
+    insertbefore: EOF
+    block: "{{ lookup('template', 'bashrc_addition') }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - FIREDANCER"
+    owner: sol
+    group: sol
+    mode: '0644'
+
+- name: Copy config.toml
+  ansible.builtin.template:
+    src: config.toml
+    dest: /home/sol/firedancer/config.toml
+    owner: sol
+    group: sol
+    mode: '0644'
+
+- name: Configure firedancer with fdctl
+  ansible.builtin.command: /home/sol/firedancer/build/native/gcc/bin/fdctl configure init all --config /home/sol/firedancer/config.toml
+  become: true
+  become_user: root
+  failed_when: false
+  changed_when: false
+
+- name: Create service for firedancer validator client
+  ansible.builtin.template:
+    src: frankendancer.service
+    dest: /etc/systemd/system/frankendancer.service
+    owner: root
+    group: root
+    mode: '0644'

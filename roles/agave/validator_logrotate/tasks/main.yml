@@ -1,0 +1,21 @@
+---
+- name: Starting Role {{ role_name }}
+  ansible.builtin.debug:
+    msg: "DEBUG: {{ role_name }}"
+
+- name: Configure solana validator log rotation - /etc/logrotate.d/sol
+  ansible.builtin.blockinfile:
+    state: present
+    create: true
+    insertafter: EOF
+    dest: /etc/logrotate.d/sol
+    mode: '0644'
+    owner: root
+    group: root
+    block: |
+      /var/log/solana/solana-validator.log {
+        rotate 7
+        daily
+        missingok
+        copytruncate
+      }

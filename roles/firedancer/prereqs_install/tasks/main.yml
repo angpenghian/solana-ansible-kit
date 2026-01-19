@@ -1,0 +1,75 @@
+---
+- name: Starting Role {{ role_name }}
+  ansible.builtin.debug:
+    msg: "DEBUG: {{ role_name }}"
+
+- name: Install Rust as sol
+  ansible.builtin.shell: >
+    su - sol -c 'curl https://sh.rustup.rs -sSf | sh -s -- -y'
+  changed_when: false
+  failed_when: false
+
+- name: Reload cargo env and show versions
+  ansible.builtin.shell: >
+    su - sol -c '. $HOME/.cargo/env && rustc --version && cargo --version && rustfmt --version'
+  args:
+    executable: /bin/bash
+  register: installed_rust_versions
+  changed_when: false
+  failed_when: false
+
+- name: Print Rust versions
+  ansible.builtin.debug:
+    msg: "{{ installed_rust_versions.stdout_lines }}"
+
+- name: Add rustfmt component as sol user (su workaround)
+  ansible.builtin.shell: >
+    su - sol -c '. $HOME/.cargo/env && rustup component add rustfmt'
+  changed_when: false
+  failed_when: false
+
+- name: Update Rust toolchain as sol user (su workaround)
+  ansible.builtin.shell: >
+    su - sol -c '. $HOME/.cargo/env && rustup update'
+  changed_when: false
+  failed_when: false
+
+- name: Show all package install status and version (using vars)
+  ansible.builtin.shell: >
+    dpkg -l {{ firedancer_dependencies | join(' ') }} 2>/dev/null
+  register: firedancer_dpkg_out
+  changed_when: false
+  failed_when: false
+
+- name: Print dpkg -l output
+  ansible.builtin.debug:
+    msg: "{{ firedancer_dpkg_out.stdout_lines }}"
+
+- name: Install required build dependencies
+  ansible.builtin.apt:
+    name: "{{ firedancer_dependencies }}"
+    state: present
+    update_cache: true
+
+- name: Update package index and upgrade all packages
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: dist
+    autoremove: true
+    autoclean: true
+
+- name: Reboot the machine and wait for it to come back
+  ansible.builtin.reboot:
+    reboot_timeout: 600
+    test_command: whoami
+
+- name: Show all package install status and version (using vars)
+  ansible.builtin.shell: |
+    dpkg -l {{ firedancer_dependencies | join(' ') }} 2>/dev/null
+  register: firedancer_dpkg_out
+  changed_when: false
+  failed_when: false
+
+- name: Print dpkg -l output
+  ansible.builtin.debug:
+    msg: "{{ firedancer_dpkg_out.stdout_lines }}"

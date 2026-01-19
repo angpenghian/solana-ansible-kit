@@ -1,0 +1,17 @@
+[Unit]
+Description=Solana Validator
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+User=sol
+LimitNOFILE=1000000
+LimitMEMLOCK=2000000000
+LogRateLimitIntervalSec=0
+ExecStart="/home/sol/validator.sh"
+
+[Install]
+WantedBy=multi-user.target

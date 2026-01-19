@@ -1,0 +1,165 @@
+---
+- name: Starting Role {{ role_name }}
+  ansible.builtin.debug:
+    msg: "DEBUG: {{ role_name }}"
+
+- name: Ensure ethtool is installed
+  ansible.builtin.package:
+    name: ethtool
+    state: present
+  tags:
+    - packages
+
+- name: Create ring buffer configuration script
+  ansible.builtin.copy:
+    dest: "{{ ring_buffers_script_path }}"
+    mode: "0755"
+    content: |
+      #!/bin/bash
+
+      # Ring buffer settings (will be auto-capped to hardware maximum)
+      DESIRED_RX_SIZE={{ ring_buffer_rx_size }}
+      DESIRED_TX_SIZE={{ ring_buffer_tx_size }}
+
+      # Function to check if interface is physical
+      is_physical_nic() {
+          local interface=$1
+
+          # Skip if no device symlink (virtual interfaces don't have this)
+          [ ! -d "/sys/class/net/$interface/device" ] && return 1
+
+          # Skip if it's a virtual function (VF)
+          [ -d "/sys/class/net/$interface/device/physfn" ] && return 1
+
+          # Skip bridge, bond, vlan, etc.
+          local type=$(cat /sys/class/net/$interface/type 2>/dev/null)
+          [ "$type" != "1" ] && return 1  # Type 1 is ethernet
+
+          # Skip if interface name suggests it's virtual
+          case "$interface" in
+              lo|virbr*|docker*|veth*|br-*|vxlan*|dummy*|tunl*|tap*|tun*|doublezero*|tailscale*)
+                  return 1
+                  ;;
+          esac
+
+          return 0
+      }
+
+      # Main loop
+      echo "Setting ring buffers for physical network interfaces..."
+
+      for interface in $(ls /sys/class/net/); do
+          if is_physical_nic "$interface"; then
+              echo -n "Processing $interface: "
+
+              # Get current settings for comparison
+              current_rx=$(ethtool -g "$interface" 2>/dev/null | awk '/Current hardware settings:/{f=1} f&&/^RX:/{print $2; exit}')
+              max_rx=$(ethtool -g "$interface" 2>/dev/null | awk '/Pre-set maximums:/{f=1} f&&/^RX:/{print $2; exit}')
+              max_tx=$(ethtool -g "$interface" 2>/dev/null | awk '/Pre-set maximums:/{f=1} f&&/^TX:/{print $2; exit}')
+
+              if [ -z "$max_rx" ] || [ -z "$max_tx" ]; then
+                  echo "Unable to query ring parameters (not supported?)"
+                  continue
+              fi
+
+              # Convert to integers for comparison
+              max_rx=$((max_rx + 0))
+              max_tx=$((max_tx + 0))
+              DESIRED_RX_SIZE=$((DESIRED_RX_SIZE + 0))
+              DESIRED_TX_SIZE=$((DESIRED_TX_SIZE + 0))
+
+              # Ensure we don't exceed maximum
+              if [ "$DESIRED_RX_SIZE" -gt "$max_rx" ] 2>/dev/null; then
+                  actual_rx=$max_rx
+                  echo -n "(RX capped to max $max_rx) "
+              else
+                  actual_rx=$DESIRED_RX_SIZE
+              fi
+
+              if [ "$DESIRED_TX_SIZE" -gt "$max_tx" ] 2>/dev/null; then
+                  actual_tx=$max_tx
+                  echo -n "(TX capped to max $max_tx) "
+              else
+                  actual_tx=$DESIRED_TX_SIZE
+              fi
+
+              # Apply settings
+              if ethtool -G "$interface" rx "$actual_rx" tx "$actual_tx" 2>/dev/null; then
+                  echo "Set to RX=$actual_rx TX=$actual_tx (was RX=$current_rx)"
+              else
+                  echo "Failed to set ring buffers"
+              fi
+          fi
+      done
+
+      echo "Ring buffer configuration complete."
+  tags:
+    - script
+
+- name: Create systemd service file
+  ansible.builtin.copy:
+    dest: "/etc/systemd/system/{{ ring_buffers_service_name }}"
+    content: |
+      [Unit]
+      Description=Set ring buffers for physical network interfaces
+      After=network-pre.target
+      Before=network.target
+
+      [Service]
+      Type=oneshot
+      ExecStart={{ ring_buffers_script_path }}
+      RemainAfterExit=yes
+      StandardOutput=journal
+      StandardError=journal
+
+      [Install]
+      WantedBy=network.target
+    owner: root
+    group: root
+    mode: '0644'
+  tags:
+    - systemd
+  notify:
+    - reload systemd
+
+- name: Create optional configuration file
+  ansible.builtin.copy:
+    dest: /etc/default/ethtool-ring-buffers
+    content: |
+      # Ring buffer sizes
+      RX_SIZE={{ ring_buffer_rx_size }}
+      TX_SIZE={{ ring_buffer_tx_size }}
+
+      # Interfaces to skip (space-separated)
+      SKIP_INTERFACES=""
+
+      # Interfaces to explicitly include (empty means all physical)
+      INCLUDE_INTERFACES=""
+    owner: root
+    group: root
+    mode: '0644'
+  tags:
+    - config
+
+- name: Enable and start ethtool ring buffer service
+  ansible.builtin.systemd:
+    name: "{{ ring_buffers_service_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  tags:
+    - systemd
+
+- name: Run ring buffer configuration immediately
+  ansible.builtin.command: "{{ ring_buffers_script_path }}"
+  register: ring_buffers_ring_buffer_output
+  changed_when: "'Set to RX=' in ring_buffers_ring_buffer_output.stdout"
+  tags:
+    - apply
+
+- name: Display ring buffer configuration output
+  ansible.builtin.debug:
+    var: ring_buffers_ring_buffer_output.stdout_lines
+  when: ring_buffers_ring_buffer_output is defined
+  tags:
+    - apply

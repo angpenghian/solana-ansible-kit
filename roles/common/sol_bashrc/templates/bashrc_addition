@@ -1,0 +1,10 @@
+alias catchup='clear && solana catchup --our-localhost'
+alias monitor='clear && agave-validator --ledger /mnt/ledger monitor'
+alias logtail='tail -f /var/log/solana/solana-validator.log'
+alias logs='logtail | grep -v INFO'
+alias waitforexit='agave-validator --ledger /mnt/ledger exit --max-delinquent-stake 5 --min-idle-time 10'
+alias forceexit='agave-validator --ledger /mnt/ledger exit -f'
+alias waitforwindow='agave-validator --ledger /mnt/ledger wait-for-restart-window --max-delinquent-stake 5 --min-idle-time 10'
+alias rpcver='curl -s -X POST http://localhost:8899 -H "Content-Type: application/json" -d "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"getVersion\"}"'
+alias poh="grep 'PoH speed check' /var/log/solana/solana-validator.log*"
+. "$HOME/.cargo/env"

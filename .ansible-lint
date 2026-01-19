@@ -1,0 +1,10 @@
+exclude_paths:
+  - collections/
+  - collections/ansible_collections/
+  - collections/ansible_collections/community/
+  - collections/ansible_collections/ansible/
+
+skip_list:
+  - risky-shell-pipe # causing issues with 1password commands
+  - var-naming[no-role-prefix] # causing issues with role prefixes
+  - role-name[path] # causing issues with role paths

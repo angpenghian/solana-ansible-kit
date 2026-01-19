@@ -1,0 +1,357 @@
+---
+- name: Starting Role {{ role_name }}
+  ansible.builtin.debug:
+    msg: "DEBUG: {{ role_name }}"
+
+# =============================================================================
+# JITO PREFLIGHT CHECKS - COMPREHENSIVE VALIDATION
+# =============================================================================
+# This preflight check validates that all Jito tasks have been completed successfully
+# including prerequisites, validator installation, and configuration
+
+- name: "========== JITO PREFLIGHT CHECKS START =========="
+  ansible.builtin.debug:
+    msg: "Starting comprehensive Jito preflight validation..."
+
+# =============================================================================
+# 1. RUST TOOLCHAIN VALIDATION
+# =============================================================================
+- name: "--- Rust Toolchain Validation ---"
+  ansible.builtin.debug:
+    msg: "Checking Rust toolchain installation..."
+
+- name: Verify Rust toolchain installations
+  ansible.builtin.shell: su - sol -c '. $HOME/.cargo/env && {{ item }} --version'
+  register: rust_tools_check
+  failed_when: rust_tools_check.rc != 0
+  changed_when: false
+  loop:
+    - rustc
+    - cargo
+    - rustfmt
+
+- name: Display Rust toolchain versions
+  ansible.builtin.debug:
+    msg: "{{ item.stdout }}"
+  loop: "{{ rust_tools_check.results }}"
+
+# =============================================================================
+# 2. SYSTEM DEPENDENCIES VALIDATION
+# =============================================================================
+- name: "--- System Dependencies Validation ---"
+  ansible.builtin.debug:
+    msg: "Checking system dependencies installation..."
+
+- name: Verify all required packages are installed
+  ansible.builtin.shell: dpkg -l {{ item }} | grep -q "^ii"
+  register: package_check
+  failed_when: package_check.rc != 0
+  changed_when: false
+  loop: "{{ jito_dependencies }}"
+
+- name: Display installed package versions
+  ansible.builtin.shell: dpkg -l {{ jito_dependencies | join(' ') }} 2>/dev/null
+  register: package_versions
+  changed_when: false
+
+- name: Show package installation status
+  ansible.builtin.debug:
+    msg: "{{ package_versions.stdout_lines }}"
+
+# =============================================================================
+# 3. JITO REPOSITORY VALIDATION
+# =============================================================================
+- name: "--- Jito Repository Validation ---"
+  ansible.builtin.debug:
+    msg: "Checking Jito repository and source code..."
+
+- name: Check if Jito repository exists
+  ansible.builtin.stat:
+    path: /home/sol/jito-solana
+  register: jito_repo_check
+
+- name: Fail if Jito repository doesn't exist
+  ansible.builtin.fail:
+    msg: "Jito repository not found at /home/sol/jito-solana. Run jito/validator_install role first."
+  when: not jito_repo_check.stat.exists
+
+- name: Check Jito repository git status
+  ansible.builtin.shell: su - sol -c "cd /home/sol/jito-solana && git status --porcelain"
+  register: jito_git_status
+  changed_when: false
+
+- name: Check current Jito repository tag
+  ansible.builtin.shell: su - sol -c "cd /home/sol/jito-solana && git describe --tags --exact-match HEAD 2>/dev/null || echo 'no-tag'"
+  register: jito_current_tag
+  changed_when: false
+
+- name: Display Jito repository information
+  ansible.builtin.debug:
+    msg:
+      - "Repository exists: {{ jito_repo_check.stat.exists }}"
+      - "Current tag: {{ jito_current_tag.stdout }}"
+      - "Expected tag: {{ expected_jito_version }}"
+      - "Git status: {{ jito_git_status.stdout if jito_git_status.stdout else 'clean' }}"
+
+- name: Verify correct Jito version is checked out
+  ansible.builtin.fail:
+    msg: "Jito repository is not on expected version {{ expected_jito_version }}. Current: {{ jito_current_tag.stdout }}"
+  when: jito_current_tag.stdout != expected_jito_version
+
+# =============================================================================
+# 4. JITO BINARY VALIDATION
+# =============================================================================
+- name: "--- Jito Binary Validation ---"
+  ansible.builtin.debug:
+    msg: "Checking Jito validator binary installation..."
+
+- name: Check if Jito validator binary exists
+  ansible.builtin.stat:
+    path: "/home/sol/.local/share/solana/install/releases/{{ expected_jito_version }}/bin/agave-validator"
+  register: jito_binary_check
+
+- name: Fail if Jito validator binary doesn't exist
+  ansible.builtin.fail:
+    msg: "Jito validator binary not found. Expected: /home/sol/.local/share/solana/install/releases/{{ expected_jito_version }}/bin/agave-validator"
+  when: not jito_binary_check.stat.exists
+
+- name: Check Jito validator binary version
+  ansible.builtin.command: su - sol -c "/home/sol/.local/share/solana/install/releases/{{ expected_jito_version }}/bin/agave-validator --version"
+  register: jito_binary_version
+  changed_when: false
+
+- name: Display Jito validator version
+  ansible.builtin.debug:
+    msg: "Jito validator version: {{ jito_binary_version.stdout }}"
+
+# =============================================================================
+# 5. CONFIGURATION FILES VALIDATION
+# =============================================================================
+- name: "--- Configuration Files Validation ---"
+  ansible.builtin.debug:
+    msg: "Checking Jito configuration files..."
+
+- name: Check if validator script exists
+  ansible.builtin.stat:
+    path: /home/sol/validator.sh
+  register: validator_script_check
+
+- name: Fail if validator script doesn't exist
+  ansible.builtin.fail:
+    msg: "Validator script not found at /home/sol/validator.sh. Run jito/validator_install role first."
+  when: not validator_script_check.stat.exists
+
+- name: Check validator script permissions
+  ansible.builtin.stat:
+    path: /home/sol/validator.sh
+  register: validator_script_perms
+
+- name: Verify validator script is executable
+  ansible.builtin.fail:
+    msg: "Validator script is not executable. Expected permissions: 755, Current: {{ validator_script_perms.stat.mode }}"
+  when: not validator_script_perms.stat.executable
+
+- name: Check if .bashrc has Jito PATH configuration
+  ansible.builtin.command: grep -q "{{ expected_jito_version }}" /home/sol/.bashrc
+  register: bashrc_jito_check
+  changed_when: false
+
+- name: Fail if .bashrc doesn't have Jito PATH configuration
+  ansible.builtin.fail:
+    msg: "Jito PATH configuration not found in /home/sol/.bashrc. Run jito/validator_install role first."
+  when: bashrc_jito_check.rc != 0
+
+# =============================================================================
+# 6. NETWORK CONFIGURATION VALIDATION
+# =============================================================================
+- name: "--- Network Configuration Validation ---"
+  ansible.builtin.debug:
+    msg: "Checking network-specific configuration..."
+
+- name: Check validator script network configuration
+  ansible.builtin.command: grep -q "{{ jito_network }}" /home/sol/validator.sh
+  register: network_config_check
+  changed_when: false
+
+- name: Fail if network configuration doesn't match expected network
+  ansible.builtin.fail:
+    msg: "Validator script network configuration doesn't match expected network '{{ jito_network }}'. Check validator script template."
+  when: network_config_check.rc != 0
+
+- name: Display network configuration details
+  ansible.builtin.shell: grep -E "(BLOCK_ENGINE_URL|RELAYER_URL|SHRED_RECEIVER_ADDR|entrypoint)" /home/sol/validator.sh
+  register: network_config_details
+  changed_when: false
+
+- name: Show network configuration
+  ansible.builtin.debug:
+    msg: "{{ network_config_details.stdout_lines }}"
+
+# =============================================================================
+# 7. KEY FILES VALIDATION
+# =============================================================================
+- name: "--- Key Files Validation ---"
+  ansible.builtin.debug:
+    msg: "Checking required key files..."
+
+- name: Check if validator keypair exists
+  ansible.builtin.stat:
+    path: /home/sol/validator-keypair.json
+  register: validator_keypair_check
+
+- name: Check if vote account keypair exists
+  ansible.builtin.stat:
+    path: /home/sol/vote-account-keypair.json
+  register: vote_keypair_check
+
+- name: Display key files status
+  ansible.builtin.debug:
+    msg:
+      - "Validator keypair exists: {{ validator_keypair_check.stat.exists }}"
+      - "Vote account keypair exists: {{ vote_keypair_check.stat.exists }}"
+
+- name: Warn about missing key files
+  ansible.builtin.debug:
+    msg: "WARNING: Key files are missing. These need to be created manually before running the validator."
+  when: not validator_keypair_check.stat.exists or not vote_keypair_check.stat.exists
+
+# =============================================================================
+# 8. DIRECTORY STRUCTURE VALIDATION
+# =============================================================================
+- name: "--- Directory Structure Validation ---"
+  ansible.builtin.debug:
+    msg: "Checking required directory structure..."
+
+- name: Check required directories exist
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  register: directory_checks
+  loop:
+    - /mnt/ledger
+    - /mnt/accounts
+    - /var/log/solana
+    - /home/sol/.local/share/solana/install/releases/{{ jito_install_version }}
+
+- name: Check directory existence results
+  ansible.builtin.set_fact:
+    missing_directories: "{{ directory_checks.results | selectattr('stat.exists', 'equalto', false) | map(attribute='item') | list }}"
+
+- name: Fail if required directories are missing
+  ansible.builtin.fail:
+    msg: "Required directories are missing: {{ missing_directories | join(', ') }}"
+  when: missing_directories | length > 0
+
+- name: Display directory structure status
+  ansible.builtin.debug:
+    msg: "All required directories exist: {{ missing_directories | length == 0 }}"
+
+# =============================================================================
+# 9. SYSTEM RESOURCES VALIDATION
+# =============================================================================
+- name: "--- System Resources Validation ---"
+  ansible.builtin.debug:
+    msg: "Checking system resources..."
+
+- name: Check available disk space
+  ansible.builtin.shell: df -h /mnt | tail -1 | awk '{print $4}'
+  register: disk_space_check
+  changed_when: false
+
+- name: Check available memory
+  ansible.builtin.shell: free -h | grep Mem | awk '{print $7}'
+  register: memory_check
+  changed_when: false
+
+- name: Check CPU cores
+  ansible.builtin.command: nproc
+  register: cpu_cores_check
+  changed_when: false
+
+- name: Display system resources
+  ansible.builtin.debug:
+    msg:
+      - "Available disk space: {{ disk_space_check.stdout }}"
+      - "Available memory: {{ memory_check.stdout }}"
+      - "CPU cores: {{ cpu_cores_check.stdout }}"
+
+# =============================================================================
+# 10. SERVICE VALIDATION (if systemd service exists)
+# =============================================================================
+- name: "--- Service Validation ---"
+  ansible.builtin.debug:
+    msg: "Checking systemd service status..."
+
+- name: Check if Solana service exists
+  ansible.builtin.systemd:
+    name: sol.service
+  register: solana_service_check
+  failed_when: false
+  changed_when: false
+
+- name: Check Solana service status if it exists
+  ansible.builtin.systemd:
+    name: sol.service
+  register: solana_service_status
+  failed_when: false
+  changed_when: false
+  when: solana_service_check.status is defined
+
+- name: Display service status
+  ansible.builtin.debug:
+    msg: "Solana service status: {{ solana_service_status.stdout if solana_service_check.rc == 0 else 'not installed' }}"
+
+# =============================================================================
+# 11. FINAL VALIDATION SUMMARY
+# =============================================================================
+- name: "--- Final Validation Summary ---"
+  ansible.builtin.debug:
+    msg: "All Jito preflight checks completed successfully!"
+
+- name: "========== JITO PREFLIGHT CHECKS COMPLETE =========="
+  ansible.builtin.debug:
+    msg: "Jito validator is ready for operation!"
+
+# =============================================================================
+# 12. COLLECT ALL VALIDATION RESULTS
+# =============================================================================
+- name: Set preflight check results
+  ansible.builtin.set_fact:
+    jito_preflight_status: "PASS"
+    jito_preflight_summary:
+      rust_toolchain: "{{ rust_tools_check.results | selectattr('rc', 'equalto', 0) | list | length == 3 }}"
+      system_dependencies: "{{ package_check.results | selectattr('rc', 'equalto', 0) | list | length == (jito_dependencies | length) }}"
+      jito_repository: "{{ jito_repo_check.stat.exists }}"
+      jito_binary: "{{ jito_binary_check.stat.exists }}"
+      validator_script: "{{ validator_script_check.stat.exists }}"
+      bashrc_config: "{{ bashrc_jito_check.rc == 0 }}"
+      network_config: "{{ network_config_check.rc == 0 }}"
+      directories: "{{ missing_directories | length == 0 }}"
+      system_resources: true
+
+- name: Display preflight check summary
+  ansible.builtin.debug:
+    msg:
+      - "========== JITO PREFLIGHT SUMMARY =========="
+      - "Rust Toolchain: {{ '✓' if jito_preflight_summary.rust_toolchain else '✗' }}"
+      - "System Dependencies: {{ '✓' if jito_preflight_summary.system_dependencies else '✗' }}"
+      - "Jito Repository: {{ '✓' if jito_preflight_summary.jito_repository else '✗' }}"
+      - "Jito Binary: {{ '✓' if jito_preflight_summary.jito_binary else '✗' }}"
+      - "Validator Script: {{ '✓' if jito_preflight_summary.validator_script else '✗' }}"
+      - "Bashrc Config: {{ '✓' if jito_preflight_summary.bashrc_config else '✗' }}"
+      - "Network Config: {{ '✓' if jito_preflight_summary.network_config else '✗' }}"
+      - "Directories: {{ '✓' if jito_preflight_summary.directories else '✗' }}"
+      - "System Resources: {{ '✓' if jito_preflight_summary.system_resources else '✗' }}"
+      - "============================================="
+
+- name: Fail if any critical checks failed
+  ansible.builtin.fail:
+    msg: "Jito preflight checks failed. Please review the summary above and fix any issues before proceeding."
+  when: >
+    not jito_preflight_summary.rust_toolchain or
+    not jito_preflight_summary.system_dependencies or
+    not jito_preflight_summary.jito_repository or
+    not jito_preflight_summary.jito_binary or
+    not jito_preflight_summary.validator_script or
+    not jito_preflight_summary.bashrc_config or
+    not jito_preflight_summary.network_config or
+    not jito_preflight_summary.directories

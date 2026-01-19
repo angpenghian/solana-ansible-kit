@@ -1,0 +1,47 @@
+---
+- name: Starting Role {{ role_name }}
+  ansible.builtin.debug:
+    msg: "DEBUG: {{ role_name }}"
+
+- name: Write SSH private key - Root
+  ansible.builtin.copy:
+    content: "{{ root_github_ssh_private_key | trim }}\n"
+    dest: /root/.ssh/id_ed25519_github
+    owner: root
+    group: root
+    mode: '0600'
+  no_log: true
+  when: root_github_ssh_private_key | default('') | length > 0
+
+- name: Write SSH public key - Root
+  ansible.builtin.copy:
+    content: "{{ root_github_ssh_public_key | trim }}\n"
+    dest: /root/.ssh/id_ed25519_github.pub
+    owner: root
+    group: root
+    mode: '0644'
+  no_log: true
+  when: root_github_ssh_public_key | default('') | length > 0
+
+- name: Configure SSH for GitHub - Root
+  ansible.builtin.blockinfile:
+    path: /root/.ssh/config
+    create: true
+    owner: root
+    group: root
+    mode: '0600'
+    block: |
+      Host github.com
+        HostName github.com
+        User git
+        IdentityFile ~/.ssh/id_ed25519_github
+        AddKeysToAgent yes
+  when: root_github_ssh_private_key | default('') | length > 0
+
+- name: Ensure GitHub is in known_hosts (ed25519)
+  ansible.builtin.known_hosts:
+    name: github.com
+    key: "{{ lookup('pipe', 'ssh-keyscan -t ed25519 github.com 2>/dev/null') }}"
+    path: /root/.ssh/known_hosts
+    state: present
+  when: root_github_ssh_public_key | default('') | length > 0

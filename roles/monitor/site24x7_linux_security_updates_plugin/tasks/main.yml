@@ -1,0 +1,119 @@
+---
+- name: Starting Role {{ role_name }}
+  ansible.builtin.debug:
+    msg: "DEBUG: {{ role_name }}"
+
+# Site24x7 linux_security_updates Prerequisites Check
+- name: "Python3 Installation Check."
+  ansible.builtin.command: "python3 --version"
+  register: python_version_output
+  ignore_errors: true
+  changed_when: false
+
+- name: "Installing Python if not found (for Debian/Ubuntu)."
+  ansible.builtin.apt:
+    name: python3
+    state: present
+  when: "not python_version_output.stdout and ansible_facts['os_family'] == 'Debian'"
+
+- name: "Installing Python if not found (for CentOS/RedHat)."
+  ansible.builtin.package:
+    name: python3
+    state: present
+  when: "not python_version_output.stdout and ansible_facts['os_family'] == 'RedHat'"
+
+- name: "Pip3 Installation Check."
+  ansible.builtin.command: "pip3 --version"
+  register: pip_version_output
+  ignore_errors: true
+  changed_when: false
+
+- name: "Installing pip3 if not found (for Debian/Ubuntu)."
+  ansible.builtin.apt:
+    name: python3-pip
+    state: present
+  when: "not pip_version_output.stdout and ansible_facts['os_family'] == 'Debian'"
+
+- name: "Installing pip3 if not found (for RedHat/CentOS)."
+  ansible.builtin.package:
+    name: python3-pip
+    state: present
+  when: "not pip_version_output.stdout and ansible_facts['os_family'] == 'RedHat'"
+
+- name: "Installing distro Python3 Package."
+  ansible.builtin.pip:
+    name: distro
+    state: present
+    executable: pip3
+  failed_when: false
+
+- name: "Site24x7 Agent Directory Check."
+  ansible.builtin.stat:
+    path: "/opt/site24x7/monagent/temp"
+  register: agent_path_check
+
+- name: "Hosts with no Site24x7 Agent Directory"
+  ansible.builtin.debug:
+    msg: "Agent Directory not found"
+  when: not agent_path_check.stat.exists
+
+
+- name: "Site24x7 Temp Plugins Directory Creation."
+  ansible.builtin.file:
+    path: "/opt/site24x7/monagent/temp/plugins/linux_security_updates"
+    state: directory
+    mode: '0755'
+  when: agent_path_check.stat.exists
+
+- name: "Site24x7 Plugin Directory Check"
+  ansible.builtin.stat:
+    path: "/opt/site24x7/monagent/temp/plugins/linux_security_updates"
+  register: plugin_path_check
+
+- name: "Download the Site24x7 linux_security_updates Plugin Files."
+  ansible.builtin.get_url:
+    url: "{{ item }}"
+    dest: "/opt/site24x7/monagent/temp/plugins/linux_security_updates"
+    mode: '0744'
+  loop: ["https://raw.githubusercontent.com/site24x7/plugins/master/linux_security_updates/linux_security_updates.py"]
+  when: plugin_path_check.stat.exists
+
+# Site24x7 linux_security_updates Python File Setup
+
+- name: "Site24x7 linux_security_updates Python File Check."
+  ansible.builtin.stat:
+    path: "/opt/site24x7/monagent/temp/plugins/linux_security_updates/linux_security_updates.py"
+  register: linux_security_updates_python_file_check
+
+- name: "Extracting Python3 Default Path."
+  ansible.builtin.command: which python3
+  register: python3_path
+  changed_when: false
+
+- name: "Setting Python3 shebang path"
+  ansible.builtin.set_fact:
+    actual_path: "{{ '#!' + python3_path.stdout }}"
+
+- name: "Setting the Default Python Path for the Site24x7 linux_security_updates Plugin"
+  ansible.builtin.lineinfile:
+    path: "/opt/site24x7/monagent/temp/plugins/linux_security_updates/linux_security_updates.py"
+    regexp: "#!"
+    line: "{{ actual_path }}"
+  when: linux_security_updates_python_file_check.stat.exists
+
+- name: "Checking the Site24x7 linux_security_updates Plugin Output"
+  ansible.builtin.command: "python3 /opt/site24x7/monagent/temp/plugins/linux_security_updates/linux_security_updates.py"
+  register: linux_security_updates_python_output
+  when: linux_security_updates_python_file_check.stat.exists
+  changed_when: false
+
+- name: "Site24x7 linux_security_updates plugins with Error !"
+  ansible.builtin.debug:
+    msg: "Site24x7 linux_security_updates Plugin OUTPUT error ! \n {{ linux_security_updates_python_output.stdout }}"
+  when: "'\"status\": 0' in linux_security_updates_python_output.stdout and linux_security_updates_python_file_check.stat.exists"
+
+- name: "Moving the Site24x7 linux_security_updates Folder to the Plugins Directory"
+  ansible.builtin.command: "mv  /opt/site24x7/monagent/temp/plugins/linux_security_updates /opt/site24x7/monagent/plugins"
+  failed_when: false
+  changed_when: false
+  when: "plugin_path_check.stat.exists and '\"status\": 0' not in linux_security_updates_python_output.stdout"

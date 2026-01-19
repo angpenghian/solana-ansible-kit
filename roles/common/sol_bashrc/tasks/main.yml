@@ -1,0 +1,14 @@
+---
+- name: Starting Role {{ role_name }}
+  ansible.builtin.debug:
+    msg: "DEBUG: {{ role_name }}"
+
+- name: Add to .bashrc for `sol` user
+  ansible.builtin.blockinfile:
+    path: /home/sol/.bashrc
+    insertbefore: EOF
+    block: "{{ lookup('template', 'bashrc_addition') }}"
+    create: true
+    owner: sol
+    group: sol
+    mode: '0644'

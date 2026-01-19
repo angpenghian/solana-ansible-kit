@@ -1,0 +1,67 @@
+---
+- name: Provision Solana Validator
+  hosts: all
+  become: true
+  gather_facts: true
+  vars_files:
+    - vars/common_vars.yml
+    - vars/agave_vars.yml
+    - vars/jito_vars.yml
+    - vars/firedancer_vars.yml
+    - vars/monitor.yml
+
+  # override vars
+  vars:
+    agave_install_version: v2.3.6
+    # options: testnet, mainnet
+    agave_network: mainnet
+
+    jito_install_version: v2.3.8-jito
+    jito_upgrade_version: v2.3.9-jito
+    # options: testnet, mainnet, bam
+    jito_network: testnet
+
+    firedancer_install_version: v0.708.20306
+    firedancer_network: testnet
+
+  roles:
+    - common/create_users
+    - common/ssh_keys
+    - common/server_settings
+    - common/sol_bashrc
+    - common/ntp
+    - common/fail2ban
+    - common/ssh_keys_github
+    - common/github
+    - common/docker
+    - common/rpc_firewall
+    - common/ring_buffers
+
+    - role: agave/prereqs_install
+      tags: [agave-install]
+    - role: agave/validator_install
+      tags: [agave-install]
+    - agave/cron
+    - agave/validator_logrotate
+
+    - role: jito/prereqs_install
+      tags: [jito-install]
+    - role: jito/validator_install
+      tags: [jito-install]
+    # version upgrade
+    - role: jito/prereqs_upgrade
+      tags: [jito-upgrade]
+    - role: jito/validator_upgrade
+      tags: [jito-upgrade]
+
+    - role: firedancer/prereqs_install
+      tags: [firedancer-install]
+    - role: firedancer/validator_install
+      tags: [firedancer-install]
+
+    - role: monitor/site24x7_install
+      tags: [monitoring]
+    - role: monitor/site24x7_linux_security_updates_plugin
+      tags: [monitoring]
+    - role: monitor/validator_health_check
+      tags: [health-check]

@@ -1,0 +1,49 @@
+---
+- name: Starting Role {{ role_name }}
+  ansible.builtin.debug:
+    msg: "DEBUG: {{ role_name }}"
+
+- name: Reset UFW
+  community.general.ufw:
+    state: reset
+
+
+# 35.199.0.195 == Tools Server
+# 73.217.126.225 == Josh's home
+# 34.171.35.95 == web-01
+
+
+- name: UFW - Allow Specific IPs over SSH
+  community.general.ufw:
+    rule: allow
+    port: '22'
+    proto: 'tcp'
+    from_ip: '{{ item }}'
+  loop:
+    - 35.199.0.195/32
+    - 73.217.126.225/32
+    - 34.171.35.95/32
+
+- name: UFW - Allow wide range of dynamic ports udp & tcp
+  community.general.ufw:
+    rule: allow
+    port: '8000:10000'
+    proto: '{{ item }}'
+  loop:
+    - udp
+    - tcp
+
+# - name: UFW - Deny specific RPC ports
+#   community.general.ufw:
+#     rule: deny
+#     port: '{{ item }}'
+#     proto: 'tcp'
+#   loop:
+#     - 8899
+#     - 8900
+#     - 8901
+
+- name: UFW - Enable and deny by default
+  community.general.ufw:
+    state: enabled
+    default: deny

@@ -1,0 +1,10 @@
+---
+# site24x7_install
+proxy: NONE                # Change this value to required proxy setting like user:password@proxyhost:proxyport
+site24x7_device_key: ""
+
+# health_check
+health_check_repo_url: https://github.com/example/validator-health-check.git
+health_check_repo_dir: /opt/validator-health-check
+health_check_script: health_check.sh
+health_check_config_path: /etc/validator_health_check.json

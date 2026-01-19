@@ -1,0 +1,134 @@
+---
+- name: Starting Role {{ role_name }}
+  ansible.builtin.debug:
+    msg: "DEBUG: {{ role_name }}"
+
+# Compile Agave
+- name: Clone agave as sol
+  ansible.builtin.shell: >
+    su - sol -c "git clone https://github.com/anza-xyz/agave.git"
+  changed_when: false
+  failed_when: false
+
+- name: Git checkout tags/$TAG
+  ansible.builtin.shell: >
+    su - sol -c "cd /home/sol/agave && git fetch --tags && git checkout tags/{{ agave_install_version }}"
+  environment:
+    TAG: "{{ agave_install_version }}"
+  changed_when: false
+  failed_when: false
+
+- name: Git submodule update --init --recursive
+  ansible.builtin.shell: >
+    su - sol -c "cd /home/sol/agave && git submodule update --init --recursive"
+  changed_when: false
+  failed_when: false
+
+- name: Run cargo-install-all.sh with CI_COMMIT and TAG
+  ansible.builtin.shell: >
+    su - sol -c "cd /home/sol/agave &&
+    CI_COMMIT=$(git rev-parse HEAD) scripts/cargo-install-all.sh --validator-only
+    ~/.local/share/solana/install/releases/$TAG"
+  environment:
+    TAG: "{{ agave_install_version }}"
+  changed_when: false
+  failed_when: false
+
+# Add Agave-specific content
+- name: Add Agave-specific content to .bashrc
+  ansible.builtin.blockinfile:
+    path: /home/sol/.bashrc
+    insertbefore: EOF
+    block: "{{ lookup('template', 'bashrc_addition') }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - AGAVE/JITO"
+    owner: sol
+    group: sol
+    mode: '0644'
+
+# Create Junk keypairs
+- name: Create Junk Validator Keypair
+  ansible.builtin.command:
+    cmd: >
+      /home/sol/.local/share/solana/install/active_release/bin/solana-keygen
+      new -s --no-bip39-passphrase -o /home/sol/keys/junk/validator-keypair.json
+  register: agave_validator_keypair_out
+  ignore_errors: true
+  changed_when: false
+
+- name: Debug
+  ansible.builtin.debug:
+    msg: "{{ agave_validator_keypair_out.stdout_lines }}"
+
+- name: Create Junk Vote Account Keypair
+  ansible.builtin.command:
+    cmd: >
+      /home/sol/.local/share/solana/install/active_release/bin/solana-keygen
+      new -s --no-bip39-passphrase -o /home/sol/keys/junk/vote-account-keypair.json
+  register: agave_validator_vote_keypair_out
+  ignore_errors: true
+  changed_when: false
+
+- name: Debug
+  ansible.builtin.debug:
+    msg: "{{ agave_validator_vote_keypair_out.stdout_lines }}"
+
+- name: Create symlink for Junk Validator Keypair
+  ansible.builtin.command:
+    "ln -sf /home/sol/keys/junk/validator-keypair.json /home/sol/validator-keypair.json"
+  register: agave_validator_keypair_out
+  changed_when: false
+
+- name: Debug
+  ansible.builtin.debug:
+    msg: "{{ agave_validator_keypair_out.stdout_lines }}"
+
+- name: Create symlink for Junk Vote Account Keypair
+  ansible.builtin.command:
+    "ln -sf /home/sol/keys/junk/vote-account-keypair.json /home/sol/vote-account-keypair.json"
+  register: agave_validator_vote_keypair_out
+  changed_when: false
+
+- name: Debug
+  ansible.builtin.debug:
+    msg: "{{ agave_validator_vote_keypair_out.stdout_lines }}"
+
+# Create service / Copy validator.sh
+- name: Create service for agave/solana validator client
+  ansible.builtin.copy:
+    src: sol.service
+    dest: /etc/systemd/system/sol.service
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Copy validator.sh
+  ansible.builtin.template:
+    src: validator.sh
+    dest: /home/sol/validator.sh
+    owner: sol
+    group: sol
+    mode: '0755'
+
+# Set ownership on `sol` dirs
+- name: Set ownership on `sol` dirs
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    recurse: true
+    owner: sol
+    group: sol
+  with_items:
+    - "/home/sol/bin"
+    - "/home/sol/keys"
+    - "/home/sol/.ssh"
+
+- name: Set permissions on `sol` dirs
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    recurse: true
+    mode: '0700'
+  with_items:
+    - "/home/sol/bin"
+    - "/home/sol/keys"
+    - "/home/sol/.ssh"

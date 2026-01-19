@@ -1,0 +1,40 @@
+---
+- name: Starting Role {{ role_name }}
+  ansible.builtin.debug:
+    msg: "DEBUG: {{ role_name }}"
+
+- name: Remove existing bin directory (clean slate)
+# Equivalent to: rm -rf /home/sol/bin/* /home/sol/bin/.git /home/sol/bin/.gitignore
+  ansible.builtin.file:
+    path: "{{ bin_dir }}"
+    state: absent
+
+- name: Recreate bin directory
+  ansible.builtin.file:
+    path: "{{ bin_dir }}"
+    state: directory
+    owner: sol
+    group: sol
+    mode: "0755"
+
+- name: Ensure /home/sol/bin is marked as a safe Git directory for root
+  community.general.git_config:
+    name: safe.directory
+    scope: global
+    value: "{{ bin_dir }}"
+    state: present
+
+- name: Clone validator_bin into /home/sol/bin (as root)
+  ansible.builtin.git:
+    repo: "{{ repo_url }}"
+    dest: "{{ bin_dir }}"
+    version: "main"
+    accept_hostkey: true
+    force: true
+
+- name: Ensure sol owns /home/sol/bin recursively
+  ansible.builtin.file:
+    path: "{{ bin_dir }}"
+    owner: sol
+    group: sol
+    recurse: true

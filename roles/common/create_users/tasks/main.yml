@@ -1,0 +1,30 @@
+---
+- name: Starting Role {{ role_name }}
+  ansible.builtin.debug:
+    msg: "DEBUG: {{ role_name }}"
+
+- name: Create a new regular user with sudo privileges
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    state: present
+    groups: sudo
+    append: true
+    create_home: true
+    shell: /bin/bash
+  with_items:
+    - "{{ my_users }}"
+
+- name: Create sol user
+  ansible.builtin.user:
+    name: sol
+    state: present
+    create_home: true
+    shell: /bin/bash
+
+- name: Remove user passwords
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    password: "*"
+  with_items:
+    - "{{ my_users }}"
+    - name: sol

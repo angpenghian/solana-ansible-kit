@@ -1,0 +1,6 @@
+docs/
+.ansible/
+.vscode/
+collections/ansible_collections/
+*.retry
+.DS_Store

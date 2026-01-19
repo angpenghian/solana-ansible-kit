@@ -1,0 +1,59 @@
+---
+# create_users / ssh_keys
+my_users:
+  - name: ops
+    ssh_public_key: ""
+  - name: validator
+    ssh_public_key: ""
+
+sol_ssh_private_key: ""
+sol_ssh_public_key: ""
+
+root_github_ssh_private_key: ""
+root_github_ssh_public_key: ""
+
+# configure_server_settings
+disabled_services:
+  - unattended-upgrades.service
+  - apt-daily-upgrade.timer
+  - apt-daily-upgrade.service
+  - update-notifier-download.timer
+  - update-notifier-download.service
+  - apt-daily.timer
+  - apt-daily.service
+
+base_packages:
+  - curl
+  - vim
+  - git
+  - ufw
+  - fio
+  - nvme-cli
+  - nload
+  - net-tools
+  - plocate
+  - lm-sensors
+  - rsync
+  - aptitude
+  - sysstat
+  - smartmontools
+
+linux_kernel_tools:
+  - linux-tools-generic
+  - "linux-tools-{{ ansible_kernel }}"
+  - inotify-tools
+  - htop
+  - iotop
+  - powertop
+  - cpufrequtils
+
+# github
+bin_dir: /home/sol/bin
+repo_url: "https://github.com/example/validator-bin.git"
+
+# ring_buffers
+ring_buffer_rx_size: 8160
+ring_buffer_tx_size: 8160
+ring_buffers_script_path: /usr/local/bin/set-ring-buffers.sh
+ring_buffers_service_name: ethtool-ring-buffers.service
+

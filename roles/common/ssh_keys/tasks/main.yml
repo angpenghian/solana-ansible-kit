@@ -1,0 +1,42 @@
+---
+- name: Starting Role {{ role_name }}
+  ansible.builtin.debug:
+    msg: "DEBUG: {{ role_name }}"
+
+# remote users
+- name: Set authorized key for remote users
+  ansible.posix.authorized_key:
+    user: "{{ item.name }}"
+    state: present
+    key: "{{ item.ssh_public_key }}"
+    exclusive: "{{ ssh_keys_enforce_exclusive }}"
+  when: item.ssh_public_key | default('') | length > 0
+  loop: "{{ my_users }}"
+
+# sol user
+- name: Write sol SSH private key
+  ansible.builtin.copy:
+    content: "{{ sol_ssh_private_key | trim }}"
+    dest: /home/sol/.ssh/id_ed25519
+    owner: sol
+    group: sol
+    mode: '0600'
+  no_log: true
+  when: sol_ssh_private_key | default('') | length > 0
+
+- name: Write sol SSH public key
+  ansible.builtin.copy:
+    content: "{{ sol_ssh_public_key | trim }}"
+    dest: /home/sol/.ssh/id_ed25519.pub
+    owner: sol
+    group: sol
+    mode: '0644'
+  no_log: true
+  when: sol_ssh_public_key | default('') | length > 0
+
+- name: Add sol public key to authorized_keys
+  ansible.posix.authorized_key:
+    user: sol
+    state: present
+    key: "{{ sol_ssh_public_key }}"
+  when: sol_ssh_public_key | default('') | length > 0

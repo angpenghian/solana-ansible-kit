@@ -1,0 +1,48 @@
+---
+- name: Starting Role {{ role_name }}
+  ansible.builtin.debug:
+    msg: "DEBUG: {{ role_name }}"
+
+- name: Print kernel version using Ansible fact
+  ansible.builtin.debug:
+    msg: "Kernel version: {{ ansible_kernel }}"
+
+- name: Show all package install status and version (using vars)
+  ansible.builtin.shell: |
+    dpkg -l {{ jito_dependencies | join(' ') }} 2>/dev/null
+  register: jito_dpkg_out
+  changed_when: false
+  failed_when: false
+
+- name: Print dpkg -l output
+  ansible.builtin.debug:
+    msg: "{{ jito_dpkg_out.stdout_lines }}"
+
+- name: Install required build dependencies
+  ansible.builtin.apt:
+    name: "{{ jito_dependencies }}"
+    state: present
+    update_cache: true
+
+- name: Update package index and upgrade all packages
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: dist
+    autoremove: true
+    autoclean: true
+
+- name: Reboot the machine and wait for it to come back
+  ansible.builtin.reboot:
+    reboot_timeout: 600
+    test_command: whoami
+
+- name: Show all package install status and version (using vars)
+  ansible.builtin.shell: |
+    dpkg -l {{ jito_dependencies | join(' ') }} 2>/dev/null
+  register: jito_dpkg_out
+  changed_when: false
+  failed_when: false
+
+- name: Print dpkg -l output
+  ansible.builtin.debug:
+    msg: "{{ jito_dpkg_out.stdout_lines }}"

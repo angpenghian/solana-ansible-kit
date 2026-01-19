@@ -1,0 +1,6 @@
+[sshd-invaliduser]
+enabled = true
+maxretry = 3
+port    = ssh
+logpath = %(sshd_log)s
+backend = %(sshd_backend)s

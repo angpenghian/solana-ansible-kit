@@ -1,0 +1,1 @@
+export PATH="/home/sol/.local/share/solana/install/releases/{{ agave_install_version }}"/bin:"$PATH"

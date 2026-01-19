@@ -1,0 +1,28 @@
+---
+# prereqs_install
+firedancer_dependencies:
+  - curl
+  - diffutils
+  - build-essential
+  - pkg-config
+  - pkgconf
+  - cmake
+  - libclang-dev
+  - libudev-dev
+  - protobuf-compiler
+  - autoconf
+  - automake
+  - autopoint
+  - bison
+  - flex
+  - gcc-multilib
+  - gettext
+  - llvm
+  - lcov
+  - libgmp-dev
+  - libprotobuf-dev
+  - libssl-dev
+  - perl
+  - zlib1g-dev
+  - clang
+  - make

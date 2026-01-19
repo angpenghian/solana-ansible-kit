@@ -1,0 +1,11 @@
+[Unit]
+Description=Frankendancer Validator
+After=network.target
+
+[Service]
+ExecStart=/bin/bash -c ' \
+    /home/sol/firedancer/build/native/gcc/bin/fdctl configure init all --config /home/sol/firedancer/config.toml && \
+    /home/sol/firedancer/build/native/gcc/bin/fdctl run --config /home/sol/firedancer/config.toml'
+
+[Install]
+WantedBy=multi-user.target

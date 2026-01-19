@@ -1,0 +1,32 @@
+---
+- name: Starting Role {{ role_name }}
+  ansible.builtin.debug:
+    msg: "DEBUG: {{ role_name }}"
+
+- name: Install fail2ban package
+  ansible.builtin.package:
+    name: fail2ban
+    state: present
+
+- name: Create Fail2Ban invalid user config file
+  ansible.builtin.copy:
+    src: sshd-invaliduser.conf.filter
+    dest: /etc/fail2ban/filter.d/sshd-invaliduser.conf
+    remote_src: false
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Create Fail2Ban invalid user jail
+  ansible.builtin.copy:
+    src: sshd-invaliduser.conf.jail
+    dest: /etc/fail2ban/jail.d/sshd-invaliduser.conf
+    remote_src: false
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Restart Fail2Ban service
+  ansible.builtin.service:
+    name: fail2ban
+    state: restarted
