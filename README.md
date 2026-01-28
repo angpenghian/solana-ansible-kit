@@ -1,96 +1,127 @@
-# Solana Ansible Kit
+# solana-ansible-kit
 
-**Production-grade Ansible automation to provision, harden, and operate Solana validator fleets from bare Linux servers to running validators.**
+**Production-grade Ansible automation for Solana validator fleet operations**
 
-Takes a fresh Linux server and transforms it into a secure, optimized validator node running Agave, Jito, or Firedancer with a single playbook run.
+Provision, harden, and operate Solana validator infrastructure at scale. Supports Agave, Jito, and Firedancer with idempotent, tag-based workflows.
 
-## What This Does
+## The Problem
 
-This isn't just a build script - it's a **complete validator fleet provisioning system** that handles:
+Operating validator fleets at scale requires:
+- **Consistent provisioning**: Identical security hardening and system tuning across all hosts
+- **Safe upgrade workflows**: Zero-downtime updates without manual intervention
+- **Configuration management**: Version-controlled infrastructure as code
+- **Operational discipline**: Rollback paths, preflight checks, audit trails
 
-### 🔐 Security & Hardening
-- User provisioning with SSH key management
-- Fail2ban intrusion prevention
-- RPC firewall configuration
-- GitHub SSH key deployment
+Manual server setup is error-prone, time-consuming, and doesn't scale beyond a few nodes.
 
-### ⚙️ System Optimization
-- NTP time synchronization for consensus accuracy
-- Ring buffer tuning for network performance
-- Server settings optimization (sysctl, limits)
-- Custom bash environment for validator operations
+## The Solution
 
-### 🚀 Validator Operations
-- **Build from source**: Compile Agave, Jito, or Firedancer validators
-- **Multi-client support**: Run different validators on different nodes
-- **Zero-downtime upgrades**: Tag-based upgrade workflows for Jito
-- **Service management**: systemd integration with log rotation
-- **Cron automation**: Scheduled maintenance tasks
+**Ansible-based fleet automation** that:
+- Transforms bare Linux servers into production-ready validator nodes in one playbook run
+- Applies security hardening, performance tuning, and service management consistently
+- Supports multiple validator clients (Agave, Jito, Firedancer) with client-specific roles
+- Enables tag-based operations (compile, upgrade, validate) for granular control
+- Provides preflight checks to catch configuration issues before production
 
-### 📦 Infrastructure
-- Docker setup for containerized tooling
-- Dependency management (Rust, build tools, libraries)
-- Version pinning and reproducible builds
+## Why This Matters for Validator Operations
 
-## Why This Matters
+**Fleet Consistency**: Provision 10 servers identically with the same playbook
 
-Most validator guides show you how to compile a binary. This shows you how to **operate a fleet**:
-- Provision 10 servers identically in one playbook run
-- Upgrade validators with confidence using idempotent roles
-- Audit every change through version-controlled configuration
-- Onboard new team members with runnable documentation
+**Operational Safety**: Idempotent roles mean you can re-run without side effects
 
-## Complete Feature List
+**Audit Trail**: Version-controlled configuration shows what changed and when
 
-### Common Roles (Applied to All Validators)
-| Role | Purpose |
-|------|---------|
-| `create_users` | Provision operator accounts with sudo access |
-| `ssh_keys` | Deploy SSH public keys for team access |
-| `ssh_keys_github` | Fetch and deploy SSH keys from GitHub users |
-| `server_settings` | Optimize sysctl, ulimits, and kernel parameters |
-| `ntp` | Configure time synchronization for consensus |
-| `fail2ban` | Protect against brute-force SSH attacks |
-| `docker` | Install Docker for containerized tooling |
-| `rpc_firewall` | Configure firewall rules for RPC endpoints |
-| `ring_buffers` | Tune network ring buffers for high throughput |
-| `sol_bashrc` | Custom shell environment for validator ops |
-| `github` | GitHub CLI and git configuration |
+**Team Onboarding**: New operators can understand and modify the stack through code
 
-### Validator-Specific Roles
-| Client | Compile | Upgrade | Preflight Checks | Features |
-|--------|---------|---------|------------------|----------|
-| **Agave** | ✅ | - | - | Mainnet/testnet, systemd service, log rotation, cron tasks |
-| **Jito** | ✅ | ✅ | ✅ | Mainnet/testnet/BAM, zero-downtime upgrades, deployment validation |
-| **Firedancer** | ✅ | - | - | Testnet, dependency automation (deps.sh), multi-architecture |
+## Architecture
 
-## Repository Structure
 ```
-solana-ansible-kit/
-├── inventory/hosts.yml              # Target servers and grouping
-├── playbooks/
-│   ├── sol_validator.yml            # Main provisioning playbook
-│   └── vars/                        # Per-client configuration
-│       ├── common_vars.yml          # Users, SSH keys, system settings
-│       ├── agave_vars.yml           # Agave-specific config
-│       ├── jito_vars.yml            # Jito-specific config
-│       └── firedancer_vars.yml      # Firedancer-specific config
-└── roles/
-    ├── common/                      # 11 hardening & optimization roles
-    ├── agave/                       # Agave build + service setup
-    ├── jito/                        # Jito build + upgrade workflows
-    └── firedancer/                  # Firedancer build automation
+┌────────────────────────────────────────────────────────────────┐
+│ Ansible Control Node (Local Machine)                          │
+│ • inventory/hosts.yml   • playbooks/   • roles/               │
+└─────────────────────────┬──────────────────────────────────────┘
+                          │
+                          │ SSH (Ansible Automation)
+                          ▼
+┌────────────────────────────────────────────────────────────────┐
+│ Validator Fleet (Target Servers)                              │
+│ • validator-01  • validator-02  • validator-03  ...           │
+└──────────┬─────────────────────────────────────────────────────┘
+           │
+           │ Ansible Roles Applied
+           ▼
+┌────────────────────────────────────────────────────────────────┐
+│ Phase 1: Common Hardening (11 Roles)                          │
+│ • create_users     • ssh_keys          • fail2ban             │
+│ • server_settings  • ntp               • rpc_firewall         │
+│ • ring_buffers     • docker            • github               │
+│ • sol_bashrc       • ssh_keys_github                          │
+└──────────┬─────────────────────────────────────────────────────┘
+           │
+           ▼
+┌────────────────────────────────────────────────────────────────┐
+│ Phase 2: Validator Client Build (Client-Specific)             │
+│                                                                │
+│  Agave Role          Jito Role          Firedancer Role       │
+│  • Clone repo        • Clone repo       • Clone repo          │
+│  • Install deps      • Install deps     • Run deps.sh         │
+│  • Compile binary    • Compile binary   • Build with LLVM     │
+│  • systemd service   • systemd service  • systemd service     │
+│  • Log rotation      • Upgrade workflow • Testnet config      │
+│  • Cron tasks        • Preflight checks                       │
+└──────────┬─────────────────────────────────────────────────────┘
+           │
+           ▼
+┌────────────────────────────────────────────────────────────────┐
+│ Result: Production-Ready Validator                            │
+│ • Hardened OS        • Tuned performance  • Service managed   │
+│ • Validated config   • Audit trail       • Rollback capable   │
+└────────────────────────────────────────────────────────────────┘
 ```
+
+## Features
+
+### Security & Hardening
+- **User management**: Provision operator accounts with SSH key deployment
+- **Intrusion prevention**: Fail2ban protection against brute-force attacks
+- **Firewall rules**: RPC endpoint access control
+- **SSH hardening**: Key-based auth, GitHub key integration
+
+### System Optimization
+- **Time synchronization**: NTP configuration for consensus accuracy
+- **Network tuning**: Ring buffer optimization for high throughput
+- **Kernel tuning**: sysctl settings and ulimits for validator workloads
+- **Custom environment**: Bash configuration for operational workflows
+
+### Validator Operations
+- **Multi-client support**: Agave, Jito, and Firedancer in single playbook
+- **Tag-based workflows**: Granular control (compile, upgrade, preflight)
+- **Zero-downtime upgrades**: Side-by-side version deployment with graceful restart
+- **Service management**: systemd integration with automatic restarts
+- **Log management**: Logrotate configuration prevents disk exhaustion
+
+### Deployment Validation
+- **Preflight checks**: Validate Rust toolchain, dependencies, binaries, configuration
+- **System resource checks**: Verify memory, CPU, disk space requirements
+- **Network validation**: Confirm entrypoints and RPC configurations
+- **Pre-production safety**: Catch issues before going live
 
 ## Quick Start
 
+### Prerequisites
+- Ansible 2.9+ on control node
+- Ubuntu/Debian target servers with SSH access
+- Sudo privileges on target servers
+
 ### 1. Install Dependencies
+
 ```bash
 ansible-galaxy collection install -r collections/requirements.yml
 ```
 
-### 2. Configure Your Fleet
-**Edit inventory** ([inventory/hosts.yml](inventory/hosts.yml)):
+### 2. Configure Inventory
+
+**Edit [inventory/hosts.yml](inventory/hosts.yml)**:
 ```yaml
 all:
   children:
@@ -102,16 +133,19 @@ all:
           ansible_host: 203.0.113.11
 ```
 
-**Configure users and SSH keys** ([playbooks/vars/common_vars.yml](playbooks/vars/common_vars.yml)):
+### 3. Configure Variables
+
+**Set users and SSH keys in [playbooks/vars/common_vars.yml](playbooks/vars/common_vars.yml)**:
 ```yaml
 server_users:
   - alice
   - bob
 ssh_public_keys:
   - "ssh-ed25519 AAAA... alice@example.com"
+  - "ssh-ed25519 AAAA... bob@example.com"
 ```
 
-**Set validator versions** ([playbooks/sol_validator.yml](playbooks/sol_validator.yml)):
+**Set validator versions in [playbooks/sol_validator.yml](playbooks/sol_validator.yml)**:
 ```yaml
 vars:
   agave_install_version: v2.3.6
@@ -119,7 +153,7 @@ vars:
   firedancer_install_version: v0.708.20306
 ```
 
-### 3. Provision Your Validators
+### 4. Provision Validators
 
 **Full provisioning** (bare server → running validator):
 ```bash
@@ -128,44 +162,193 @@ ansible-playbook playbooks/sol_validator.yml --limit primary_validators
 
 **Targeted operations** using tags:
 ```bash
-# Compile Agave on all hosts
+# Compile specific client
 ansible-playbook playbooks/sol_validator.yml --tags agave-compile
-
-# Upgrade Jito validator to new version
-ansible-playbook playbooks/sol_validator.yml --tags jito-upgrade
-
-# Compile Firedancer from source
+ansible-playbook playbooks/sol_validator.yml --tags jito-compile
 ansible-playbook playbooks/sol_validator.yml --tags firedancer-compile
 
-# Apply only hardening roles
+# Zero-downtime Jito upgrade
+ansible-playbook playbooks/sol_validator.yml --tags jito-upgrade
+
+# Apply only hardening (no validator build)
 ansible-playbook playbooks/sol_validator.yml --tags common
 
-# Run preflight checks only (validate deployment)
+# Run preflight validation
 ansible-playbook playbooks/sol_validator.yml --tags jito-preflight
 ```
 
-## Production-Grade Features
+## Repository Structure
 
-### Deployment Validation (Preflight Checks)
+```
+solana-ansible-kit/
+├── inventory/
+│   └── hosts.yml                      # Target server definitions
+├── playbooks/
+│   ├── sol_validator.yml              # Main provisioning playbook
+│   └── vars/
+│       ├── common_vars.yml            # Users, SSH keys, system settings
+│       ├── agave_vars.yml             # Agave-specific configuration
+│       ├── jito_vars.yml              # Jito-specific configuration
+│       └── firedancer_vars.yml        # Firedancer-specific configuration
+├── roles/
+│   ├── common/                        # 11 hardening & optimization roles
+│   │   ├── create_users/
+│   │   ├── ssh_keys/
+│   │   ├── fail2ban/
+│   │   ├── server_settings/
+│   │   ├── ntp/
+│   │   ├── rpc_firewall/
+│   │   ├── ring_buffers/
+│   │   ├── docker/
+│   │   ├── github/
+│   │   ├── sol_bashrc/
+│   │   └── ssh_keys_github/
+│   ├── agave/                         # Agave build + service setup
+│   │   ├── agave_compile/
+│   │   └── agave_systemd/
+│   ├── jito/                          # Jito build + upgrade workflows
+│   │   ├── jito_compile/
+│   │   ├── jito_systemd/
+│   │   ├── jito_upgrade/
+│   │   └── jito_preflight/
+│   └── firedancer/                    # Firedancer build automation
+│       ├── frankendancer_compile/
+│       └── frankendancer_systemd/
+└── collections/
+    └── requirements.yml               # Ansible collection dependencies
+```
 
-Before running a validator in production, comprehensive validation ensures everything is correctly configured:
+## Real-World Workflows
+
+### Scenario 1: New Validator Fleet
+Provision 5 fresh Ubuntu servers:
+```bash
+# Single command: bare server → production validator
+ansible-playbook playbooks/sol_validator.yml --limit primary_validators
+
+# Result:
+# - Users created with SSH access
+# - System hardened (fail2ban, firewall, sysctl tuning)
+# - Validator compiled from source
+# - systemd service configured
+# - Log rotation enabled
+# - Ready to start validating
+```
+
+### Scenario 2: Zero-Downtime Jito Upgrade
+```bash
+# 1. Update version in playbook
+vim playbooks/sol_validator.yml  # Change jito_upgrade_version
+
+# 2. Run upgrade workflow
+ansible-playbook playbooks/sol_validator.yml --tags jito-upgrade
+
+# What happens:
+# - New version compiles alongside existing binary
+# - Validator service stops gracefully
+# - Binaries swapped atomically
+# - Service restarts with new version
+# - Old version retained for rollback
+```
+
+### Scenario 3: Onboard New Team Member
+```bash
+# 1. Add to common_vars.yml
+server_users:
+  - alice
+  - bob
+  - charlie  # new
+
+# 2. Add SSH public key
+ssh_public_keys:
+  - "ssh-ed25519 AAAA... charlie@example.com"
+
+# 3. Apply changes (idempotent)
+ansible-playbook playbooks/sol_validator.yml --tags create_users,ssh_keys
+
+# Result: Charlie can SSH to all validators immediately
+```
+
+### Scenario 4: Pre-Production Validation
+```bash
+# After deploying Jito, validate before going live
+ansible-playbook playbooks/sol_validator.yml --tags jito-preflight --limit validator-01
+
+# Preflight checks:
+# ✓ Rust toolchain versions
+# ✓ System dependencies installed
+# ✓ Correct repository version
+# ✓ Binary exists and matches version
+# ✓ Configuration files valid
+# ✓ Network settings correct
+# ✓ Required directories present
+# ✓ Sufficient system resources
+
+# All checks pass → Safe to start validator
+```
+
+## Validator Client Support
+
+| Client | Compile | Upgrade | Preflight | Networks | Status |
+|--------|---------|---------|-----------|----------|--------|
+| **Agave** | ✅ | - | - | Mainnet, Testnet | Production |
+| **Jito** | ✅ | ✅ | ✅ | Mainnet, Testnet, BAM | Production |
+| **Firedancer** | ✅ | - | - | Testnet | Beta |
+
+### Agave Features
+- Compile from anza-xyz/agave repository
+- systemd service management
+- Log rotation configuration
+- Cron task automation
+- Mainnet and testnet support
+
+### Jito Features
+- Compile from jito-foundation/jito-solana repository
+- Zero-downtime upgrade workflow
+- Comprehensive preflight validation
+- systemd service management
+- Mainnet, testnet, and BAM network support
+
+### Firedancer Features
+- Compile from firedancer-io/firedancer repository
+- Automated dependency management (deps.sh)
+- LLVM/Clang toolchain configuration
+- systemd service management
+- Testnet support (mainnet in development)
+
+## Production-Ready Design
+
+**Idempotency**: Run the same playbook 100 times → same result. Safe for automation.
+
+**Modularity**: Use only what you need via Ansible tags and role selection.
+
+**Auditability**: Every change explicit in version control. No hidden state.
+
+**Transparency**: No secret managers or external dependencies. Bring your own credentials.
+
+**Validation**: Preflight checks catch configuration issues before production impact.
+
+**Maintainability**: Simple shell tasks and Jinja2 templates, not complex abstractions.
+
+## Deployment Validation
+
+Run preflight checks before starting validators:
 
 ```bash
-# Run Jito preflight checks
 ansible-playbook playbooks/sol_validator.yml --tags jito-preflight
 ```
 
-**What gets validated**:
-- ✓ Rust toolchain (rustc, cargo, rustfmt versions)
-- ✓ System dependencies (all required packages installed)
-- ✓ Repository state (correct version checked out)
-- ✓ Binary installation (validator binary exists and matches expected version)
-- ✓ Configuration files (validator script, .bashrc PATH)
-- ✓ Network configuration (entrypoints, block engine URLs)
-- ✓ Directory structure (required directories exist)
-- ✓ System resources (memory, CPU cores)
+**Validation coverage**:
+- ✓ Rust toolchain (rustc, cargo, rustfmt)
+- ✓ System packages (build dependencies)
+- ✓ Repository state (correct version, clean working tree)
+- ✓ Binary installation (exists, correct version)
+- ✓ Configuration files (validator script, environment)
+- ✓ Network settings (entrypoints, block engine URLs)
+- ✓ Directory structure (ledger, accounts, snapshots)
+- ✓ System resources (memory, CPU, disk)
 
-**Output example**:
+**Output**:
 ```
 ========== JITO PREFLIGHT SUMMARY ==========
 Rust Toolchain: ✓
@@ -180,111 +363,69 @@ System Resources: ✓
 ============================================
 ```
 
-This catches configuration issues **before** they cause production outages.
+## Tag-Based Operations
 
-## Real-World Workflows
+Ansible tags provide granular control over what runs:
 
-### Scenario 1: New Validator Fleet
-Starting with 5 fresh Ubuntu servers:
 ```bash
-# Single command provisions everything
-ansible-playbook playbooks/sol_validator.yml --limit primary_validators
+# Common roles only (no validator build)
+--tags common
 
-# Result:
-# - Users created with SSH keys
-# - System hardened (fail2ban, firewall, sysctl tuning)
-# - Validator compiled from source
-# - systemd service configured
-# - Log rotation setup
-# - Ready to start validating
+# Specific validator builds
+--tags agave-compile
+--tags jito-compile
+--tags firedancer-compile
+
+# Jito operations
+--tags jito-upgrade        # Zero-downtime version upgrade
+--tags jito-preflight      # Pre-production validation
+
+# Individual common roles
+--tags create_users
+--tags ssh_keys
+--tags fail2ban
+--tags server_settings
+--tags ntp
+--tags rpc_firewall
+--tags ring_buffers
 ```
 
-### Scenario 2: Zero-Downtime Jito Upgrade
-```bash
-# 1. Update version in playbook
-vim playbooks/sol_validator.yml  # Change jito_upgrade_version
+## Limitations
 
-# 2. Run upgrade workflow
-ansible-playbook playbooks/sol_validator.yml --tags jito-upgrade
+- **Platform**: Tested on Ubuntu 20.04/22.04 x86_64 (extensible to other Debian-based distros)
+- **Scope**: Provisioning and upgrades only (monitoring requires separate tooling)
+- **Secrets**: SSH keys and credentials in vars files (adapt for your secret management system)
+- **Network**: Assumes outbound internet access for package downloads (adjust for air-gapped environments)
+- **State**: No built-in rollback automation (manual service rollback supported via retained binaries)
 
-# Result:
-# - New version compiled alongside existing binary
-# - Service gracefully restarted
-# - Old version retained as rollback option
-```
+## Roadmap
 
-### Scenario 3: Onboard New Team Member
-```bash
-# 1. Add to common_vars.yml
-server_users:
-  - alice
-  - bob
-  - charlie  # new member
+- [ ] Agave zero-downtime upgrade workflow
+- [ ] Firedancer mainnet support and upgrade workflow
+- [ ] Automated rollback on failed upgrades
+- [ ] Snapshot management automation
+- [ ] Ledger cleanup and disk management
+- [ ] Multi-region deployment patterns
+- [x] Jito zero-downtime upgrades
+- [x] Preflight validation checks
+- [x] Multi-client support (Agave, Jito, Firedancer)
 
-# 2. Add SSH key
-ssh_public_keys:
-  - "ssh-ed25519 AAAA... charlie@example.com"
+## References
 
-# 3. Apply changes
-ansible-playbook playbooks/sol_validator.yml --tags create_users,ssh_keys
+**Solana Validator Documentation:**
+- [Solana Validator Guide](https://docs.solanalabs.com/operations/guides)
+- [Agave Repository](https://github.com/anza-xyz/agave)
+- [Jito Repository](https://github.com/jito-foundation/jito-solana)
+- [Firedancer Repository](https://github.com/firedancer-io/firedancer)
 
-# Result: Charlie can now SSH to all validators
-```
+**Ansible Best Practices:**
+- [Ansible Documentation](https://docs.ansible.com/)
+- [Ansible Best Practices](https://docs.ansible.com/ansible/latest/user_guide/playbooks_best_practices.html)
 
-### Scenario 4: Pre-Production Validation
-```bash
-# After deploying Jito validator, validate before going live
-ansible-playbook playbooks/sol_validator.yml --tags jito-preflight --limit validator-01
+## Contributing
 
-# Preflight checks catch issues:
-# - Missing dependencies
-# - Wrong version checked out
-# - Binary not compiled
-# - Configuration file errors
-# - Missing required directories
-
-# Fix any issues, then re-validate
-ansible-playbook playbooks/sol_validator.yml --tags jito-preflight --limit validator-01
-
-# All checks pass → Safe to start validator service
-```
-
-## Why This is Production-Ready
-
-**Idempotency**: Run the same playbook 100 times, get the same result. Safe for automation.
-
-**Auditability**: Every change is explicit in version control. No hidden state or magic.
-
-**Modularity**: Use only what you need via Ansible tags and role selection.
-
-**Transparency**: No secret managers or external dependencies. Bring your own keys and credentials.
-
-**Maintainability**: Simple shell tasks and templates, not complex abstractions.
-
-**Deployment Validation**: Preflight checks catch configuration issues before production.
-
-## Technical Highlights for Reviewers
-
-- **Multi-client architecture**: Single playbook supports Agave, Jito, and Firedancer with client-specific roles
-- **Tag-based execution**: Granular control over what runs (compile, upgrade, hardening)
-- **Version pinning**: Explicit version control for reproducible deployments
-- **Systemd integration**: Proper service management with dependencies and restart policies
-- **Log management**: Logrotate configuration prevents disk exhaustion
-- **Security defaults**: Fail2ban, SSH hardening, firewall rules applied automatically
-- **Performance tuning**: Ring buffers, sysctl settings, ulimits optimized for validators
-- **Fleet operations**: Scale from 1 to N validators with identical configuration
-
-## Limitations & Design Choices
-
-- **Target**: Ubuntu/Debian x86_64 (can be extended to other distros)
-- **Scope**: Provisioning and upgrades, not monitoring (see separate monitoring repo)
-- **Secrets**: Expects SSH keys and credentials in vars files (adapt for your secret management)
-- **Network**: Assumes outbound internet for package downloads (adjust for air-gapped)
-
-## Notes
-- This repo uses placeholder inventory entries; replace with your own targets
-- `docs/` folder is local-only and gitignored for planning/notes
-- Prefer the simplest path that works; avoid over-engineering
+Issues and feedback are welcome. Not currently accepting pull requests.
 
 ## License
+
 Apache-2.0. See [LICENSE](LICENSE).
