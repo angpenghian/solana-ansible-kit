@@ -37,45 +37,45 @@ Manual server setup is error-prone, time-consuming, and doesn't scale beyond a f
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│ Ansible Control Node (Local Machine)                          │
-│ • inventory/hosts.yml   • playbooks/   • roles/               │
+│ Ansible Control Node (Local Machine)                           │
+│ • inventory/hosts.yml   • playbooks/   • roles/                │
 └─────────────────────────┬──────────────────────────────────────┘
                           │
                           │ SSH (Ansible Automation)
                           ▼
 ┌────────────────────────────────────────────────────────────────┐
-│ Validator Fleet (Target Servers)                              │
-│ • validator-01  • validator-02  • validator-03  ...           │
+│ Validator Fleet (Target Servers)                               │
+│ • validator-01  • validator-02  • validator-03  ...            │
 └──────────┬─────────────────────────────────────────────────────┘
            │
            │ Ansible Roles Applied
            ▼
 ┌────────────────────────────────────────────────────────────────┐
-│ Phase 1: Common Hardening (11 Roles)                          │
-│ • create_users     • ssh_keys          • fail2ban             │
-│ • server_settings  • ntp               • rpc_firewall         │
-│ • ring_buffers     • docker            • github               │
-│ • sol_bashrc       • ssh_keys_github                          │
+│ Phase 1: Common Hardening (11 Roles)                           │
+│ • create_users     • ssh_keys          • fail2ban              │ 
+│ • server_settings  • ntp               • rpc_firewall          │
+│ • ring_buffers     • docker            • github                │
+│ • sol_bashrc       • ssh_keys_github                           │
 └──────────┬─────────────────────────────────────────────────────┘
            │
            ▼
 ┌────────────────────────────────────────────────────────────────┐
-│ Phase 2: Validator Client Build (Client-Specific)             │
+│ Phase 2: Validator Client Build (Client-Specific)              │
 │                                                                │
-│  Agave Role          Jito Role          Firedancer Role       │
-│  • Clone repo        • Clone repo       • Clone repo          │
-│  • Install deps      • Install deps     • Run deps.sh         │
-│  • Compile binary    • Compile binary   • Build with LLVM     │
-│  • systemd service   • systemd service  • systemd service     │
-│  • Log rotation      • Upgrade workflow • Testnet config      │
-│  • Cron tasks        • Preflight checks                       │
+│  Agave Role          Jito Role          Firedancer Role        │
+│  • Clone repo        • Clone repo       • Clone repo           │
+│  • Install deps      • Install deps     • Run deps.sh          │
+│  • Compile binary    • Compile binary   • Build with LLVM      │
+│  • systemd service   • systemd service  • systemd service      │
+│  • Log rotation      • Upgrade workflow • Testnet config       │
+│  • Cron tasks        • Preflight checks                        │
 └──────────┬─────────────────────────────────────────────────────┘
            │
            ▼
 ┌────────────────────────────────────────────────────────────────┐
-│ Result: Production-Ready Validator                            │
-│ • Hardened OS        • Tuned performance  • Service managed   │
-│ • Validated config   • Audit trail       • Rollback capable   │
+│ Result: Production-Ready Validator                             │
+│ • Hardened OS        • Tuned performance  • Service managed    │
+│ • Validated config   • Audit trail       • Rollback capable    │
 └────────────────────────────────────────────────────────────────┘
 ```
 
